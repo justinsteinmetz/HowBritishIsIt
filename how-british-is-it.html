@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How British Is It? — DSP Prague</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --uk-red: #CF142B;
+  --uk-blue: #00247D;
+  --uk-white: #FFFFFF;
+  --bg: #04082e;
+  --surface: rgba(0,0,0,0.55);
+  --surface-solid: #07102a;
+  --border: rgba(255,255,255,0.12);
+  --border-light: rgba(255,255,255,0.07);
+  --text: #f0ece4;
+  --text-dim: rgba(240,236,228,0.65);
+  --text-muted: rgba(240,236,228,0.3);
+  --accent: #CF142B;
+  --gold: #d4a847;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 300;
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* ============================================
+   UNION JACK SVG — fixed behind everything
+   ============================================ */
+#flag-container {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  transition: opacity 0.8s ease;
+}
+
+#flag-svg {
+  width: 100%;
+  height: 100%;
+  transition: all 1.2s ease;
+}
+
+/* Flag layer opacities — controlled by JS class on body */
+.flag-george   { transition: opacity 1.2s ease; }
+.flag-patrick  { transition: opacity 1.2s ease; }
+.flag-andrew   { transition: opacity 1.2s ease; }
+.flag-base     { transition: opacity 1.2s ease; }
+
+/* Stage 1: confident, unified */
+body.stage-intro .flag-base    { opacity: 1; }
+body.stage-intro .flag-andrew  { opacity: 0.18; }
+body.stage-intro .flag-patrick { opacity: 0.18; }
+body.stage-intro .flag-george  { opacity: 0.18; }
+
+/* Stage 2: same — subliminal accumulation only */
+body.stage-rating .flag-base    { opacity: 1; }
+body.stage-rating .flag-andrew  { opacity: 0.18; }
+body.stage-rating .flag-patrick { opacity: 0.18; }
+body.stage-rating .flag-george  { opacity: 0.18; }
+
+/* Stage 3A: reveal — flag same but markers transform */
+body.stage-reveal .flag-base    { opacity: 1; }
+body.stage-reveal .flag-andrew  { opacity: 0.18; }
+body.stage-reveal .flag-patrick { opacity: 0.18; }
+body.stage-reveal .flag-george  { opacity: 0.18; }
+
+/* Stage 3B: geometry — layers separate, construction visible */
+body.stage-geometry .flag-base    { opacity: 0.7; }
+body.stage-geometry .flag-andrew  { opacity: 0.55; }
+body.stage-geometry .flag-patrick { opacity: 0.55; }
+body.stage-geometry .flag-george  { opacity: 0.65; }
+
+/* Overall flag opacity per stage */
+body.stage-intro    #flag-container { opacity: 0.22; }
+body.stage-rating   #flag-container { opacity: 0.18; }
+body.stage-reveal   #flag-container { opacity: 0.20; }
+body.stage-geometry #flag-container { opacity: 0.32; }
+
+/* ============================================
+   ITEM MARKERS on flag
+   ============================================ */
+#marker-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.flag-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+}
+
+.flag-marker.visible { opacity: 1; }
+
+/* Stage 2: neutral markers */
+.marker-neutral {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.marker-dot-neutral {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.5);
+  border: 1px solid rgba(255,255,255,0.8);
+}
+
+/* LABEL TOGGLE
+   --marker-labels: 1 = names visible during rating (current default)
+   --marker-labels: 0 = dots only during rating; names appear at reveal
+   Change this one variable to switch between testable versions. */
+:root { --marker-labels: 1; }
+
+.marker-label-neutral {
+  font-family: 'DM Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.6);
+  white-space: nowrap;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  opacity: var(--marker-labels);
+}
+
+/* Stage 3: rated markers */
+.marker-rated { display: none; }
+.marker-rated .marker-dot-rated {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 2px solid;
+}
+.marker-rated .marker-label-rated {
+  font-family: 'DM Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+}
+
+body.stage-reveal .marker-neutral,
+body.stage-geometry .marker-neutral { display: none; }
+body.stage-reveal .marker-rated,
+body.stage-geometry .marker-rated { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+
+.dot-1 { border-color: #4a9a5a !important; background: rgba(74,154,90,0.3) !important; }
+.dot-2 { border-color: #8ab84a !important; background: rgba(138,184,74,0.3) !important; }
+.dot-3 { border-color: #d4a847 !important; background: rgba(212,168,71,0.3) !important; }
+.dot-4 { border-color: #CF142B !important; background: rgba(207,20,43,0.3) !important; }
+
+.label-1 { color: #6aba7a !important; }
+.label-2 { color: #aad86a !important; }
+.label-3 { color: #d4a847 !important; }
+.label-4 { color: #e06a6a !important; }
+
+/* ============================================
+   CONTENT PANELS — sit above flag
+   ============================================ */
+#content {
+  position: relative;
+  z-index: 10;
+}
+
+/* ============================================
+   INTRO SCREEN
+   ============================================ */
+#intro {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 80px 10vw;
+  animation: fadeUp 0.8s ease both;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.strand-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 52px;
+}
+
+.intro-eyebrow {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--uk-red);
+  margin-bottom: 20px;
+  opacity: 0.9;
+}
+
+.intro-title {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(52px, 8vw, 108px);
+  font-weight: 700;
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+
+.intro-subtitle {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(18px, 2.5vw, 28px);
+  font-weight: 400;
+  font-style: italic;
+  color: var(--text-dim);
+  margin-bottom: 52px;
+}
+
+.intro-rule {
+  width: 48px;
+  height: 2px;
+  background: var(--uk-red);
+  margin-bottom: 36px;
+}
+
+.intro-body {
+  max-width: 500px;
+  font-size: 16px;
+  line-height: 1.8;
+  color: var(--text-dim);
+  margin-bottom: 56px;
+  background: var(--surface);
+  backdrop-filter: blur(8px);
+  padding: 28px 32px;
+  border-left: 2px solid var(--uk-red);
+}
+
+.intro-body p + p { margin-top: 16px; }
+.intro-body strong { color: var(--text); font-weight: 500; }
+
+.btn-start {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--uk-white);
+  background: var(--uk-red);
+  border: none;
+  padding: 20px 44px;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s;
+  display: inline-block;
+}
+
+.btn-start:hover { opacity: 0.85; transform: translateY(-2px); }
+
+/* ============================================
+   INSTRUMENT SCREEN
+   ============================================ */
+#instrument {
+  display: none;
+  min-height: 100vh;
+  padding: 48px 10vw;
+}
+
+.instrument-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 12px;
+}
+
+.instrument-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.progress-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  color: var(--text-muted);
+  letter-spacing: 0.15em;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 2px;
+  background: rgba(255,255,255,0.06);
+  margin-bottom: 48px;
+}
+
+.progress-fill {
+  height: 2px;
+  background: var(--uk-red);
+  transition: width 0.4s ease;
+  width: 0%;
+}
+
+/* Spectrum legend */
+.spectrum-legend {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-bottom: 36px;
+}
+
+.legend-item {
+  background: var(--surface);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--border-light);
+  padding: 14px 10px;
+  text-align: center;
+}
+
+.legend-swatch {
+  height: 2px;
+  width: 28px;
+  margin: 0 auto 10px;
+  border-radius: 1px;
+}
+
+.swatch-1 { background: #4a9a5a; }
+.swatch-2 { background: #8ab84a; }
+.swatch-3 { background: #d4a847; }
+.swatch-4 { background: #CF142B; }
+
+.legend-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 8.5px;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+
+/* Item card */
+.item-card {
+  background: var(--surface);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--uk-red);
+  padding: 44px 52px 40px;
+  animation: fadeUp 0.3s ease both;
+}
+
+.item-number {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.item-name {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(38px, 5.5vw, 68px);
+  font-weight: 700;
+  line-height: 1.0;
+  color: var(--text);
+  margin-bottom: 20px;
+  letter-spacing: -0.01em;
+}
+
+.item-prompt {
+  font-size: 14px;
+  color: var(--text-dim);
+  line-height: 1.65;
+  margin-bottom: 40px;
+  max-width: 440px;
+  padding-left: 16px;
+  border-left: 1px solid var(--border);
+}
+
+/* Rating buttons */
+.rating-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 32px;
+}
+
+.rating-btn {
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--border-light);
+  color: var(--text-muted);
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 22px 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.rating-btn:hover {
+  border-color: rgba(255,255,255,0.2);
+  color: var(--text);
+  background: rgba(255,255,255,0.05);
+}
+
+.rating-btn[data-val="1"].selected { border-color: #4a9a5a; color: #6aba7a; background: rgba(74,154,90,0.1); }
+.rating-btn[data-val="2"].selected { border-color: #8ab84a; color: #aad86a; background: rgba(138,184,74,0.1); }
+.rating-btn[data-val="3"].selected { border-color: #d4a847; color: #d4a847; background: rgba(212,168,71,0.1); }
+.rating-btn[data-val="4"].selected { border-color: #CF142B; color: #e06a6a; background: rgba(207,20,43,0.1); }
+
+.nav-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.btn-nav {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px solid var(--border);
+  padding: 14px 28px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-nav:hover { border-color: rgba(255,255,255,0.25); color: var(--text); }
+.btn-nav:disabled { opacity: 0.2; cursor: default; pointer-events: none; }
+
+.btn-nav.primary {
+  background: var(--uk-red);
+  border-color: var(--uk-red);
+  color: white;
+}
+
+.btn-nav.primary:hover { opacity: 0.85; }
+.btn-nav.primary:disabled { background: var(--border); border-color: var(--border); color: var(--text-muted); opacity: 1; }
+
+/* ============================================
+   REVEAL SCREEN
+   ============================================ */
+#reveal {
+  display: none;
+  min-height: 100vh;
+  padding: 60px 8vw 100px;
+}
+
+.reveal-header {
+  max-width: 680px;
+  margin-bottom: 60px;
+  padding-bottom: 48px;
+  border-bottom: 1px solid var(--border);
+  animation: fadeUp 0.6s ease both;
+}
+
+.reveal-overline {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--uk-red);
+  margin-bottom: 20px;
+}
+
+.reveal-headline {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(28px, 4vw, 52px);
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--text);
+  margin-bottom: 20px;
+}
+
+.reveal-subhead {
+  font-size: 15px;
+  color: var(--text-dim);
+  line-height: 1.75;
+}
+
+/* Reveal items */
+.reveal-items { display: flex; flex-direction: column; gap: 0; }
+
+.reveal-item {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 0;
+  border-bottom: 1px solid var(--border-light);
+  animation: fadeUp 0.4s ease both;
+  background: transparent;
+  transition: background 0.2s;
+}
+
+.reveal-item:hover { background: rgba(255,255,255,0.02); }
+
+.reveal-left {
+  padding: 32px 24px 32px 0;
+  border-right: 1px solid var(--border-light);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  justify-content: flex-start;
+}
+
+.reveal-item-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.1;
+}
+
+.rating-comparison {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rating-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.rating-row-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 7px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.rating-pill {
+  display: inline-block;
+  font-family: 'DM Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border: 1px solid;
+  white-space: nowrap;
+  width: fit-content;
+}
+
+.pill-1 { border-color: #4a9a5a; color: #6aba7a; background: rgba(74,154,90,0.1); }
+.pill-2 { border-color: #8ab84a; color: #aad86a; background: rgba(138,184,74,0.1); }
+.pill-3 { border-color: #d4a847; color: #d4a847; background: rgba(212,168,71,0.1); }
+.pill-4 { border-color: #CF142B; color: #e06a6a; background: rgba(207,20,43,0.1); }
+
+.gap-badge {
+  font-family: 'DM Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  color: #e06a6a;
+  margin-top: 4px;
+}
+
+.gap-none {
+  font-family: 'DM Mono', monospace;
+  font-size: 8px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.reveal-right {
+  padding: 32px 0 32px 32px;
+}
+
+.reveal-text {
+  font-size: 14px;
+  color: var(--text-dim);
+  line-height: 1.75;
+  max-width: 560px;
+}
+
+/* Geometry transition */
+.geometry-trigger {
+  display: none;
+  margin: 60px 0;
+  padding: 48px 52px;
+  background: var(--surface);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--uk-red);
+  animation: fadeUp 0.6s ease both;
+}
+
+.geometry-trigger.visible { display: block; }
+
+.geometry-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--uk-red);
+  margin-bottom: 20px;
+}
+
+.geometry-question {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(20px, 2.5vw, 30px);
+  font-weight: 400;
+  font-style: italic;
+  color: var(--text);
+  line-height: 1.5;
+  margin-bottom: 28px;
+  max-width: 580px;
+}
+
+.geometry-body {
+  font-size: 14px;
+  color: var(--text-dim);
+  line-height: 1.8;
+  max-width: 560px;
+}
+
+.geometry-body p + p { margin-top: 16px; }
+
+.btn-geometry {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: white;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.25);
+  padding: 14px 28px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 28px;
+  display: inline-block;
+}
+
+.btn-geometry:hover { border-color: var(--uk-red); color: var(--uk-red); }
+
+/* ============================================
+   MOBILE
+   ============================================ */
+@media (max-width: 700px) {
+  #intro { padding: 60px 6vw; }
+  #instrument { padding: 32px 5vw; }
+  #reveal { padding: 40px 5vw 80px; }
+  .item-card { padding: 28px 24px; }
+  .rating-grid { grid-template-columns: repeat(2, 1fr); }
+  .spectrum-legend { grid-template-columns: repeat(2, 1fr); }
+  .reveal-item { grid-template-columns: 1fr; }
+  .reveal-left { border-right: none; border-bottom: 1px solid var(--border-light); padding: 24px 0 20px; }
+  .reveal-right { padding: 20px 0 24px; }
+  #marker-layer { display: none; }
+}
+</style>
+</head>
+<body class="stage-intro">
+
+<!-- UNION JACK fixed background -->
+<div id="flag-container">
+  <svg id="flag-svg" viewBox="0 0 60 30" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+    <!-- Base blue -->
+    <rect class="flag-base" width="60" height="30" fill="#00247D"/>
+    <!-- St Andrew's Cross (Scotland) — white diagonals -->
+    <g class="flag-andrew">
+      <line x1="0" y1="0" x2="60" y2="30" stroke="white" stroke-width="6"/>
+      <line x1="60" y1="0" x2="0" y2="30" stroke="white" stroke-width="6"/>
+    </g>
+    <!-- St Patrick's Cross (Ireland) — red diagonals, counterchanged -->
+    <g class="flag-patrick">
+      <!-- top-left quadrant -->
+      <polygon points="0,0 10,0 30,12.5 30,10 10,0" fill="#CF142B"/>
+      <polygon points="0,0 0,10 30,30 30,20 0,0" fill="none"/>
+      <line x1="0" y1="0" x2="60" y2="30" stroke="#CF142B" stroke-width="2"/>
+      <line x1="60" y1="0" x2="0" y2="30" stroke="#CF142B" stroke-width="2"/>
+      <!-- Proper counterchanged St Patrick's cross approximation -->
+      <clipPath id="tl"><polygon points="0,0 60,0 0,30"/></clipPath>
+      <clipPath id="br"><polygon points="60,30 60,0 0,30"/></clipPath>
+      <line x1="0" y1="0" x2="60" y2="30" stroke="#CF142B" stroke-width="4" clip-path="url(#tl)"/>
+      <line x1="60" y1="0" x2="0" y2="30" stroke="#CF142B" stroke-width="4" clip-path="url(#br)"/>
+    </g>
+    <!-- St George's Cross (England) — white + red -->
+    <g class="flag-george">
+      <rect x="24" y="0" width="12" height="30" fill="white"/>
+      <rect x="0" y="12" width="60" height="6" fill="white"/>
+      <rect x="26" y="0" width="8" height="30" fill="#CF142B"/>
+      <rect x="0" y="13" width="60" height="4" fill="#CF142B"/>
+    </g>
+  </svg>
+</div>
+
+<!-- Marker layer -->
+<div id="marker-layer"></div>
+
+<!-- CONTENT -->
+<div id="content">
+
+  <!-- INTRO -->
+  <section id="intro">
+    <div class="strand-label">DSP Prague · Themenfeld 3 · Politics, Culture, Society: UK</div>
+    <div class="intro-eyebrow">A discovery instrument</div>
+    <h1 class="intro-title">How<br>British<br>Is It?</h1>
+    <div class="intro-rule"></div>
+    <div class="intro-body">
+      <p>Below are twelve things that are part of British life — food, institutions, wealth, culture, geography.</p>
+      <p>For each one, you will be asked a single question: <strong>how connected is this to the British Empire?</strong></p>
+      <p>There are no right or wrong answers at this stage. Rate what you actually think, not what you expect the answer to be.</p>
+      <p>You will see the historical record afterwards — alongside your own judgments.</p>
+    </div>
+    <button class="btn-start" onclick="startInstrument()">Begin the exercise</button>
+  </section>
+
+  <!-- INSTRUMENT -->
+  <section id="instrument">
+    <div class="instrument-header">
+      <span class="instrument-title">How British Is It?</span>
+      <span class="progress-label" id="progress-label">Item 1 of 12</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+
+    <div class="spectrum-legend">
+      <div class="legend-item">
+        <div class="legend-swatch swatch-1"></div>
+        <div class="legend-label">Little or no<br>connection</div>
+      </div>
+      <div class="legend-item">
+        <div class="legend-swatch swatch-2"></div>
+        <div class="legend-label">Some<br>connection</div>
+      </div>
+      <div class="legend-item">
+        <div class="legend-swatch swatch-3"></div>
+        <div class="legend-label">Strong<br>connection</div>
+      </div>
+      <div class="legend-item">
+        <div class="legend-swatch swatch-4"></div>
+        <div class="legend-label">Hard to explain<br>without empire</div>
+      </div>
+    </div>
+
+    <div class="item-card" id="item-card">
+      <div class="item-number" id="item-number">01 / 12</div>
+      <div class="item-name" id="item-name">Tea</div>
+      <div class="item-prompt" id="item-prompt">How connected is British tea culture to the British Empire?</div>
+      <div class="rating-grid" id="rating-grid">
+        <button class="rating-btn" data-val="1" onclick="selectRating(1)">Little or no connection</button>
+        <button class="rating-btn" data-val="2" onclick="selectRating(2)">Some connection</button>
+        <button class="rating-btn" data-val="3" onclick="selectRating(3)">Strong connection</button>
+        <button class="rating-btn" data-val="4" onclick="selectRating(4)">Hard to explain without empire</button>
+      </div>
+      <div class="nav-row">
+        <button class="btn-nav" id="btn-back" onclick="goBack()" disabled>← Back</button>
+        <button class="btn-nav primary" id="btn-next" onclick="goNext()" disabled>Next →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- REVEAL -->
+  <section id="reveal">
+    <div class="reveal-header">
+      <div class="reveal-overline">The historical record</div>
+      <h2 class="reveal-headline">Your ratings, alongside the evidence.</h2>
+      <p class="reveal-subhead">The left column shows what you said. The right shows where the historical record places each item. The gap — where it exists — is the lesson.</p>
+    </div>
+
+    <div class="reveal-items" id="reveal-items"></div>
+
+    <div class="geometry-trigger" id="geometry-trigger">
+      <div class="geometry-label">Look at the flag</div>
+      <p class="geometry-question">"Why does empire keep appearing — even in things that seem entirely domestic?"</p>
+      <div class="geometry-body">
+        <p>Look at the items where the gap between your rating and the historical record was largest. That gap is not a mistake in your reasoning. It reflects something the historian Sathnam Sanghera calls <em>imperial amnesia</em> — a structural forgetting, not a personal one.</p>
+        <p>The question worth sitting with is not <em>whether</em> empire shaped these things, but <em>why that shaping is so hard to see</em> from inside British culture.</p>
+        <p>Now look at the flag behind this page differently. The Union Jack is not one flag. It is three overlapping flags — St George's Cross (England), St Andrew's Cross (Scotland), St Patrick's Cross (Ireland) — each representing a different political and military history, layered into a single symbol. The result looks natural. It was constructed.</p>
+        <p>The next instrument will ask: who made that invisibility possible?</p>
+      </div>
+      <button class="btn-geometry" onclick="triggerGeometry()">Reveal the construction →</button>
+    </div>
+  </section>
+
+</div><!-- end #content -->
+
+<script>
+const items = [
+  {
+    name: "Tea",
+    prompt: "How connected is British tea culture to the British Empire?",
+    historical: 4,
+    reveal: "Tea is not native to Britain and was not British before empire. The British East India Company controlled the trade from China from the 17th century; after the Opium Wars, Britain forced open Chinese markets partly to protect its tea supply. Mass production shifted to India and Ceylon — both under colonial rule — with Assam and Darjeeling plantations worked by indentured and coerced labour. The British tea break, the ritual, the ceramic industry it created: none of this exists without empire.",
+    pos: { x: 72, y: 18 }
+  },
+  {
+    name: "Sugar",
+    prompt: "How connected is Britain's sugar industry to the British Empire?",
+    historical: 4,
+    reveal: "Britain's sugar economy was built on the Atlantic slave trade. Caribbean plantations — Jamaica, Barbados, Trinidad — were worked by enslaved Africans transported in British ships. When slavery was abolished in 1833, the government paid £20 million in compensation — to the slaveholders, not the enslaved. That debt was only fully paid off in 2015. British consumers sweetened their tea with slave-produced sugar for 200 years.",
+    pos: { x: 15, y: 75 }
+  },
+  {
+    name: "Curry",
+    prompt: "How connected is British curry culture to the British Empire?",
+    historical: 4,
+    reveal: "Britain's most popular dish arrived through colonial contact with the Indian subcontinent from the 17th century onward. The British Raj created sustained migration routes and culinary exchange, and post-war South Asian immigration — itself a consequence of Partition, which was a consequence of decolonisation — built the restaurant industry that made curry a British staple. 'Chicken Tikka Masala as a British dish' is cultural fusion; it is equally evidence of colonial infrastructure.",
+    pos: { x: 82, y: 72 }
+  },
+  {
+    name: "The English language",
+    prompt: "How connected is the global spread of English to the British Empire?",
+    historical: 4,
+    reveal: "English is the world's dominant language because Britain imposed it. Colonial education systems across Africa, Asia, and the Caribbean systematically suppressed indigenous languages — a policy explicit in Macaulay's 1835 Minute on Indian Education, which sought to produce 'a class of persons Indian in blood and colour, but English in tastes, opinions, morals and intellect.' The global dominance of English cannot be separated from the expansion of British imperial power.",
+    pos: { x: 50, y: 50 }
+  },
+  {
+    name: "Cricket",
+    prompt: "How connected is the sport of cricket to the British Empire?",
+    historical: 4,
+    reveal: "Cricket was deliberately spread through empire as a vehicle of cultural assimilation — the belief that playing a 'gentlemen's game' would produce loyalty to British values. It was exported to the Caribbean, the Indian subcontinent, Australia, and Southern Africa. The fact that India, Pakistan, the West Indies, and Sri Lanka are now among the world's dominant cricketing nations is a direct consequence of that colonial export. The sport's geography is the empire's geography.",
+    pos: { x: 28, y: 30 }
+  },
+  {
+    name: "Immigration",
+    prompt: "How connected is post-war immigration to Britain to the British Empire?",
+    historical: 4,
+    reveal: "'We are here because you were there' — the formulation coined by A. Sivanandan — captures the logic precisely. Post-war immigration from the Caribbean, South Asia, and East Africa followed imperial routes. The Windrush generation arrived from British colonies whose labour had sustained the empire; they came as British subjects to a country whose economy they had already built. The immigration debate that dominated 20th-century British politics was, at its root, an imperial consequence.",
+    pos: { x: 38, y: 62 }
+  },
+  {
+    name: "Museums",
+    prompt: "How connected are Britain's national museums to the British Empire?",
+    historical: 4,
+    reveal: "The British Museum, the Victoria and Albert, the Natural History Museum — all were substantially built through colonial acquisition. Objects were removed from colonised peoples during military campaigns, 'collected' under conditions of extreme power imbalance, or simply looted. The Elgin Marbles, the Benin Bronzes, the Koh-i-Noor diamond: each carries a history of extraction. As the anthropologist Dan Hicks argues, the museum is not a neutral archive — it is a continuation of colonial power by other means.",
+    pos: { x: 62, y: 38 }
+  },
+  {
+    name: "Country houses",
+    prompt: "How connected are Britain's country houses to the British Empire?",
+    historical: 4,
+    reveal: "The National Trust estimates that hundreds of its properties have direct connections to colonial wealth. Many were built or extended using profits from Caribbean sugar plantations, East India Company contracts, or the slave trade. A 2020 report identified 93 National Trust properties with slavery connections. The English country house — the picturesque, the pastoral, the 'heritage' landscape — is frequently colonial money made permanent in stone.",
+    pos: { x: 18, y: 52 }
+  },
+  {
+    name: "Railways",
+    prompt: "How connected is Britain's railway industry to the British Empire?",
+    historical: 3,
+    reveal: "The relationship runs in both directions. British capital and engineering built railway networks across India, Africa, and Latin America — empire as export market for infrastructure. Simultaneously, colonial trade profits funded the industrial expansion that made British railways possible. India had 65,000 kilometres of track by 1947 — built using Indian labour under terms that extracted rather than developed local economies.",
+    pos: { x: 42, y: 22 }
+  },
+  {
+    name: "Maps",
+    prompt: "How connected is British cartography to the British Empire?",
+    historical: 3,
+    reveal: "Britain mapped the world in order to control it. The Great Trigonometrical Survey of India (1802–1866) imposed a British coordinate system on the subcontinent. Colonial cartography did not simply record geography — it named, classified, and reorganised territories according to British administrative needs, often erasing existing place names and political boundaries. To map was to possess.",
+    pos: { x: 75, y: 55 }
+  },
+  {
+    name: "The Bank of England",
+    prompt: "How connected is the Bank of England to the British Empire?",
+    historical: 3,
+    reveal: "Founded in 1694, the Bank of England developed alongside Britain's colonial expansion. Slave-trade merchants were among its early investors; colonial profits flowed through London's financial institutions and were reinvested in further expansion. The City of London's position as a global financial centre was built on colonial capital flows — from the East India Company's trading monopolies to the Caribbean sugar economy.",
+    pos: { x: 55, y: 78 }
+  },
+  {
+    name: "Oxford & Cambridge",
+    prompt: "How connected are Oxford and Cambridge to the British Empire?",
+    historical: 3,
+    reveal: "Both universities trained the administrators, ideologists, and apologists of empire. The Rhodes Scholarships — endowed by Cecil Rhodes, architect of South African colonialism — were explicitly designed to educate future imperial leaders. Oxford's Codrington Library was built with slave-plantation money. Beyond funding, both universities produced the intellectual frameworks — racial science, administrative theory — that made empire seem rational and inevitable.",
+    pos: { x: 30, y: 85 }
+  }
+];
+
+const labels = ['', 'Little or no connection', 'Some connection', 'Strong connection', 'Hard to explain without empire'];
+
+let current = 0;
+let ratings = new Array(12).fill(0);
+
+// Marker positions as percentages of viewport
+// Distributed across flag regions avoiding centre cluster
+function getMarkerPos(item) {
+  return item.pos;
+}
+
+function startInstrument() {
+  document.getElementById('intro').style.display = 'none';
+  document.getElementById('instrument').style.display = 'block';
+  document.body.className = 'stage-rating';
+  renderItem();
+}
+
+function renderItem() {
+  const item = items[current];
+  document.getElementById('item-number').textContent =
+    String(current + 1).padStart(2, '0') + ' / 12';
+  document.getElementById('item-name').textContent = item.name;
+  document.getElementById('item-prompt').textContent = item.prompt;
+  document.getElementById('progress-label').textContent = `Item ${current + 1} of 12`;
+  document.getElementById('progress-fill').style.width = `${(current / 12) * 100}%`;
+
+  const btns = document.querySelectorAll('.rating-btn');
+  btns.forEach(btn => {
+    btn.classList.remove('selected');
+    if (parseInt(btn.dataset.val) === ratings[current]) btn.classList.add('selected');
+  });
+
+  document.getElementById('btn-back').disabled = current === 0;
+  document.getElementById('btn-next').disabled = ratings[current] === 0;
+  document.getElementById('btn-next').textContent = current === 11 ? 'See the evidence →' : 'Next →';
+}
+
+function selectRating(val) {
+  ratings[current] = val;
+  document.querySelectorAll('.rating-btn').forEach(btn => {
+    btn.classList.remove('selected');
+    if (parseInt(btn.dataset.val) === val) btn.classList.add('selected');
+  });
+  document.getElementById('btn-next').disabled = false;
+}
+
+function addMarker(index) {
+  const item = items[index];
+  const pos = getMarkerPos(item);
+  const ml = document.getElementById('marker-layer');
+
+  const marker = document.createElement('div');
+  marker.className = 'flag-marker';
+  marker.id = `marker-${index}`;
+  marker.style.left = pos.x + '%';
+  marker.style.top = pos.y + '%';
+
+  // Neutral version (stage 2)
+  const neutral = document.createElement('div');
+  neutral.className = 'marker-neutral';
+  neutral.innerHTML = `
+    <div class="marker-dot-neutral"></div>
+    <div class="marker-label-neutral">${item.name}</div>
+  `;
+
+  // Rated version (stage 3)
+  const rated = document.createElement('div');
+  rated.className = 'marker-rated';
+  const studentRating = ratings[index];
+  const historicalRating = item.historical;
+  rated.innerHTML = `
+    <div class="marker-dot-rated dot-${historicalRating}"></div>
+    <div class="marker-label-rated label-${historicalRating}">${item.name}</div>
+  `;
+
+  marker.appendChild(neutral);
+  marker.appendChild(rated);
+  ml.appendChild(marker);
+
+  // Trigger visibility after brief delay
+  setTimeout(() => marker.classList.add('visible'), 50);
+}
+
+function goNext() {
+  if (current < 11) {
+    // Add marker for current item (now rated)
+    addMarker(current);
+    current++;
+    renderItem();
+    window.scrollTo(0, 0);
+  } else {
+    // Add final marker
+    addMarker(current);
+    showReveal();
+  }
+}
+
+function goBack() {
+  if (current > 0) {
+    current--;
+    renderItem();
+    window.scrollTo(0, 0);
+  }
+}
+
+function showReveal() {
+  document.getElementById('instrument').style.display = 'none';
+  document.getElementById('reveal').style.display = 'block';
+  document.body.className = 'stage-reveal';
+  window.scrollTo(0, 0);
+
+  const container = document.getElementById('reveal-items');
+  container.innerHTML = '';
+
+  items.forEach((item, i) => {
+    const studentRating = ratings[i];
+    const historicalRating = item.historical;
+    const gap = historicalRating - studentRating;
+
+    const div = document.createElement('div');
+    div.className = 'reveal-item';
+    div.style.animationDelay = `${i * 0.04}s`;
+
+    let gapHtml = '';
+    if (gap > 0) {
+      gapHtml = `<div class="gap-badge">↑ ${gap === 1 ? 'one step deeper' : gap + ' steps deeper'}</div>`;
+    } else {
+      gapHtml = `<div class="gap-none">— matched</div>`;
+    }
+
+    div.innerHTML = `
+      <div class="reveal-left">
+        <div class="reveal-item-name">${item.name}</div>
+        <div class="rating-comparison">
+          <div class="rating-row">
+            <div class="rating-row-label">Your rating</div>
+            <span class="rating-pill pill-${studentRating}">${labels[studentRating]}</span>
+          </div>
+          <div class="rating-row">
+            <div class="rating-row-label">Historical record</div>
+            <span class="rating-pill pill-${historicalRating}">${labels[historicalRating]}</span>
+            ${gapHtml}
+          </div>
+        </div>
+      </div>
+      <div class="reveal-right">
+        <p class="reveal-text">${item.reveal}</p>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+
+  // Show geometry trigger after a scroll delay
+  setTimeout(() => {
+    document.getElementById('geometry-trigger').classList.add('visible');
+  }, 800);
+}
+
+function triggerGeometry() {
+  document.body.className = 'stage-geometry';
+  document.getElementById('geometry-trigger').querySelector('.btn-geometry').textContent = 'Construction visible ↑';
+  document.getElementById('geometry-trigger').querySelector('.btn-geometry').disabled = true;
+}
+</script>
+</body>
+</html>
